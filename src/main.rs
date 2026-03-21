@@ -209,63 +209,7 @@ fn main() -> anyhow::Result<()> {
         terminal::Clear(ClearType::All),
         cursor::MoveTo(0, 0)
     )?;
-    // loop {
-    //     // Render inline
-    //     for (i, entry) in state.entries.iter().enumerate() {
-    //         if i == state.selected {
-    //             execute!(stdout, style::Print(format!("> {}\n", entry).cyan().bold()))?;
-    //         } else {
-    //             execute!(stdout, style::Print(format!("  {}\n", entry)))?;
-    //         }
-    //     }
-
-    //     let rendered_count = state.entries.len(); // snapshot before any mutation
-
-    //     if let Event::Key(key) = event::read()? {
-    //         match key.code {
-    //             KeyCode::Up => {
-    //                 if state.selected > 0 {
-    //                     state.selected -= 1
-    //                 }
-    //             }
-    //             KeyCode::Down => {
-    //                 if state.selected < state.entries.len() - 1 {
-    //                     state.selected += 1
-    //                 }
-    //             }
-    //             // Drill In
-    //             KeyCode::Right | KeyCode::Enter => {
-    //                 if let Some(dir) = state.entries.get(state.selected) {
-    //                     state.current_dir.push(dir);
-    //                     state.entries = get_dirs(&state.current_dir);
-    //                     state.selected = 0;
-    //                 }
-    //             }
-    //             // Drill Out
-    //             KeyCode::Left => {
-    //                 state.current_dir.pop();
-    //                 state.entries = get_dirs(&state.current_dir);
-    //                 state.selected = 0;
-    //             }
-    //             // Confirm selection and exit
-    //             KeyCode::Char(' ') | KeyCode::Enter if key.code == KeyCode::Enter => break,
-    //             KeyCode::Esc | KeyCode::Char('q') => {
-    //                 terminal::disable_raw_mode()?;
-    //                 std::process::exit(0);
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-
-    //     // Clean up the lines we just printed to redraw them
-    //     execute!(stdout, cursor::MoveUp((state.entries.len() + 1) as u16))?;
-    //     execute!(stdout, terminal::Clear(ClearType::FromCursorDown))?;
-    // }
-
-    // terminal::disable_raw_mode()?;
-    // // Print the final path for the shell wrapper
-    // println!("{}", state.current_dir.display());
-
+    
     terminal::disable_raw_mode()?;
     execute!(stdout, LeaveAlternateScreen)?;
     Ok(())
