@@ -142,8 +142,6 @@ fn main() -> anyhow::Result<()> {
 
         // execute!(stdout, ScrollDown(1))?;
 
-        rendered_count = navigator_state.directories.len(); // snapshot before any mutation
-
         // Wait for user input
         if let Event::Key(key) = event::read()? {
             // Match to what key user pressed
