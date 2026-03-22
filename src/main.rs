@@ -1,13 +1,14 @@
 use crossterm::{
-    cursor::{self, MoveUp},
+    cursor::{self, MoveDown, MoveRight, MoveToColumn, MoveUp},
     event::{self, Event, KeyCode},
     execute,
-    style::{self, Stylize},
+    style::{self, Print, Stylize},
     terminal::{self, ClearType, EnterAlternateScreen, LeaveAlternateScreen, ScrollDown, ScrollUp},
 };
 use std::{
     env, fs,
     io::{self, Write},
+    ops::Add,
     os::unix::thread,
     path::PathBuf,
     thread::*,
@@ -85,32 +86,56 @@ fn print_directories(
         let (terminal_width, terminal_height) = terminal::size()?;
         let max_visible_horizontal_directories =
             (terminal_width as f32 / (DIRECTORY_NAME_MAX_LENGTH + GRID_GAP) as f32).floor() as u16;
-        let max_visuble_vertical_directories = terminal_height
+        let max_visible_vertical_directories = terminal_height
             .saturating_sub(1)
             .min(MAX_VERTICAL_DIRECTORIES as u16);
 
         let (directory_grid_width, directory_grid_height) = calculate_directory_grid_dimensions(
             navigator_state.directories.len() as u16,
             max_visible_horizontal_directories,
-            max_visuble_vertical_directories,
+            max_visible_vertical_directories,
         );
 
         let selected_directory_height_pos = selected_directory as u16 % directory_grid_height;
 
         let visible_grid_area_top =
-            selected_directory_height_pos.saturating_sub(max_visuble_vertical_directories / 2);
-        let visible_grid_area_bottom = visible_grid_area_top + max_visuble_vertical_directories;
+            selected_directory_height_pos.saturating_sub(max_visible_vertical_directories / 2);
+        let visible_grid_area_bottom = visible_grid_area_top + max_visible_vertical_directories;
 
-        for i in 0..max_visuble_vertical_directories {
-            // for j in 0..max_visible_horizontal_directories {
-            //     if navigator_state.selected_dir == Some(i) {
-            //         execute!(stdout, style::Print(format!("{}", entry).cyan().bold()))?;
-            //         *rendered_terminal_lines += 1;
-            //     } else {
-            //         execute!(stdout, style::Print(format!("    {}\r\n", entry)))?;
-            //         *rendered_terminal_lines += 1;
-            //     }
-            // }
+        let lines = "\n".repeat(max_visible_vertical_directories as usize);
+        execute!(stdout, Print(lines))?;
+        execute!(stdout, MoveUp(max_visible_vertical_directories))?;
+
+        // Go through all collumns
+        for i in 0..max_visible_horizontal_directories {
+            // Go through all directories in the collumn
+            for j in visible_grid_area_top..max_visible_vertical_directories {
+                let dir_index = (j + i * max_visible_vertical_directories) as usize;
+                if dir_index >= navigator_state.directories.len() {
+                   continue;
+                }
+                let dir_name = &navigator_state.directories[dir_index];
+                let dir_name_trimmed = if dir_name.len() > DIRECTORY_NAME_MAX_LENGTH {
+                    format!("{}..", &dir_name[..DIRECTORY_NAME_MAX_LENGTH - 2])
+                } else {
+                    dir_name.clone()
+                };
+
+                let gap = " ".repeat(GRID_GAP.saturating_sub(1).max(1));
+                if selected_directory == dir_index {
+                    let gap = format!("{}{}", gap, ">");
+                    execute!(
+                        stdout,
+                        style::Print(format!("{gap}{dir_name_trimmed}").cyan().bold())
+                    )?;
+                } else {
+                    let gap = format!("{} ", gap);
+                    execute!(stdout, style::Print(format!("{gap}{dir_name_trimmed}")))?;
+                }
+                *rendered_terminal_lines += 1;
+                execute!(stdout, MoveToColumn((max_visible_horizontal_directories + GRID_GAP as u16) * i), MoveDown(1))?;
+            }
+            execute!(stdout, MoveUp(1), MoveRight(1))?;
         }
     }
 
@@ -209,7 +234,11 @@ fn main() -> anyhow::Result<()> {
             )
         )?;
 
-        // execute!(stdout, ScrollDown(1))?;
+        print_directories(
+            &mut stdout,
+            &mut navigator_state,
+            &mut rendered_terminal_lines,
+        )?;
 
         // Wait for user input
         if let Event::Key(key) = event::read()? {
