@@ -75,23 +75,29 @@ fn test() -> anyhow::Result<()> {
 
 fn print_directories(
     stdout: &mut io::Stdout,
-    navigator_state: State,
+    navigator_state: &mut State,
     rendered_terminal_lines: &mut usize,
 ) -> anyhow::Result<()> {
-    let (terminal_width, terminal_height) = terminal::size()?;
-    let max_visible_horizontal_directories =
-        (terminal_width as f32 / (DIRECTORY_NAME_MAX_LENGTH + GRID_GAP) as f32).floor() as u16;
-    let max_visuble_vertical_directories = terminal_height
-        .saturating_sub(1)
-        .min(MAX_VERTICAL_DIRECTORIES as u16);
+    if !navigator_state.directories.is_empty() {
 
-    let (directory_grid_width, directory_grid_height) = calculate_directory_grid_dimensions(
-        navigator_state.directories.len() as u16,
-        max_visible_horizontal_directories,
-        max_visuble_vertical_directories,
-    );
+        // Set selected_dir to 0 if none and get unwraped value
+        let selected_directory = *navigator_state.selected_dir.get_or_insert(0);
 
-    
+        let (terminal_width, terminal_height) = terminal::size()?;
+        let max_visible_horizontal_directories =
+            (terminal_width as f32 / (DIRECTORY_NAME_MAX_LENGTH + GRID_GAP) as f32).floor() as u16;
+        let max_visuble_vertical_directories = terminal_height
+            .saturating_sub(1)
+            .min(MAX_VERTICAL_DIRECTORIES as u16);
+
+        let (directory_grid_width, directory_grid_height) = calculate_directory_grid_dimensions(
+            navigator_state.directories.len() as u16,
+            max_visible_horizontal_directories,
+            max_visuble_vertical_directories,
+        );
+
+        
+    }
 
     // Print Avalible directories
     // for (i, entry) in navigator_state.directories.iter().enumerate() {
