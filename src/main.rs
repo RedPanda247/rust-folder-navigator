@@ -79,7 +79,6 @@ fn print_directories(
     rendered_terminal_lines: &mut usize,
 ) -> anyhow::Result<()> {
     if !navigator_state.directories.is_empty() {
-
         // Set selected_dir to 0 if none and get unwraped value
         let selected_directory = *navigator_state.selected_dir.get_or_insert(0);
 
@@ -96,7 +95,23 @@ fn print_directories(
             max_visuble_vertical_directories,
         );
 
-        
+        let selected_directory_height_pos = selected_directory as u16 % directory_grid_height;
+
+        let visible_grid_area_top =
+            selected_directory_height_pos.saturating_sub(max_visuble_vertical_directories / 2);
+        let visible_grid_area_bottom = visible_grid_area_top + max_visuble_vertical_directories;
+
+        for i in 0..max_visuble_vertical_directories {
+            // for j in 0..max_visible_horizontal_directories {
+            //     if navigator_state.selected_dir == Some(i) {
+            //         execute!(stdout, style::Print(format!("{}", entry).cyan().bold()))?;
+            //         *rendered_terminal_lines += 1;
+            //     } else {
+            //         execute!(stdout, style::Print(format!("    {}\r\n", entry)))?;
+            //         *rendered_terminal_lines += 1;
+            //     }
+            // }
+        }
     }
 
     // Print Avalible directories
