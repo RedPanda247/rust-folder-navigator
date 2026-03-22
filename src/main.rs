@@ -35,6 +35,10 @@ impl State {
     }
 }
 
+const DIRECTORY_NAME_MAX_LENGTH: usize = 10;
+const MAX_VERTICAL_DIRECTORIES: usize = 10;
+const GRID_GAP: usize = 2;
+
 fn test() -> anyhow::Result<()> {
     let mut stdout = io::stdout();
 
@@ -69,6 +73,70 @@ fn test() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn print_directories(
+    stdout: &mut io::Stdout,
+    navigator_state: State,
+    rendered_terminal_lines: &mut usize,
+) -> anyhow::Result<()> {
+    let (terminal_width, terminal_height) = terminal::size()?;
+    let max_visible_horizontal_directories =
+        (terminal_width as f32 / (DIRECTORY_NAME_MAX_LENGTH + GRID_GAP) as f32).floor() as u16;
+    let max_visuble_vertical_directories = terminal_height
+        .saturating_sub(1)
+        .min(MAX_VERTICAL_DIRECTORIES as u16);
+
+    let (directory_grid_width, directory_grid_height) = calculate_directory_grid_dimensions(
+        navigator_state.directories.len() as u16,
+        max_visible_horizontal_directories,
+        max_visuble_vertical_directories,
+    );
+
+    
+
+    // Print Avalible directories
+    // for (i, entry) in navigator_state.directories.iter().enumerate() {
+    //     if navigator_state.selected_dir == Some(i) {
+    //         execute!(stdout, style::Print(format!("{}", entry).cyan().bold()))?;
+    //         *rendered_terminal_lines += 1;
+    //     } else {
+    //         execute!(stdout, style::Print(format!("    {}\r\n", entry)))?;
+    //         *rendered_terminal_lines += 1;
+    //     }
+    // }
+    Ok(())
+}
+
+fn calculate_directory_grid_dimensions(
+    area: u16,
+    max_width: u16,
+    preferred_height: u16,
+) -> (u16, u16) {
+    if area == 0 {
+        return (0, 0);
+    }
+
+    // Ensure max_width is at least 1 to avoid division by zero
+    let max_width = max_width.max(1);
+    let preferred_height = preferred_height.max(1);
+
+    // Step 1: Try to fit everything in a single column up to preferred_height
+    if area <= preferred_height {
+        return (1, area);
+    }
+
+    // Step 2: Try to expand width while keeping preferred_height
+    // Formula for ceiling division: (area + height - 1) / height
+    let calculated_width = (area + preferred_height - 1) / preferred_height;
+
+    if calculated_width <= max_width {
+        return (calculated_width, preferred_height);
+    }
+
+    // Step 3: We hit max_width, so now we must grow height beyond preferred_height
+    let final_height = (area + max_width - 1) / max_width;
+    (max_width, final_height)
+}
+
 fn main() -> anyhow::Result<()> {
     // test()?;
     // return Ok(());
@@ -93,16 +161,9 @@ fn main() -> anyhow::Result<()> {
     // Enable raw mode to prevent users key inputs from being printed
     terminal::enable_raw_mode()?;
 
-    // Enter alternate screen (If we don't there are a lot of issues with directories containing a lot of segments)
-    execute!(stdout, EnterAlternateScreen)?;
-    let mut rendered_count: usize = 0;
+    let mut rendered_terminal_lines: usize = 0;
 
     loop {
-        execute!(
-            stdout,
-            terminal::Clear(ClearType::All),
-            cursor::MoveTo(0, 0),
-        )?;
         // Get name of current directory
         let dir_name = navigator_state
             .current_dir
@@ -115,23 +176,10 @@ fn main() -> anyhow::Result<()> {
             stdout,
             style::Print(format!("{}\r\n", dir_name).green().bold())
         )?;
+        rendered_terminal_lines += 1;
 
         //TODO only render directories that fit
-        let (_, terminal_height) = terminal::size()?;
-
-        let max_directories_that_fit = (terminal_height as usize).saturating_sub(2);
-
-        // Print Avalible directories
-        for (i, entry) in navigator_state.directories.iter().enumerate() {
-            if navigator_state.selected_dir == Some(i) {
-                execute!(
-                    stdout,
-                    style::Print(format!("  > {}\r\n", entry).cyan().bold())
-                )?;
-            } else {
-                execute!(stdout, style::Print(format!("    {}\r\n", entry)))?;
-            }
-        }
+        let (terminal_width, terminal_height) = terminal::size()?;
 
         execute!(
             stdout,
@@ -200,16 +248,21 @@ fn main() -> anyhow::Result<()> {
                 _ => {}
             }
         }
+        clear_terminal_lines(&mut stdout, rendered_terminal_lines)?;
+        rendered_terminal_lines = 0;
     }
+
+    clear_terminal_lines(&mut stdout, rendered_terminal_lines)?;
+    rendered_terminal_lines = 0;
 
     execute!(
         stdout,
         terminal::Clear(ClearType::All),
         cursor::MoveTo(0, 0)
     )?;
-    
+
     terminal::disable_raw_mode()?;
-    execute!(stdout, LeaveAlternateScreen)?;
+    // execute!(stdout, LeaveAlternateScreen)?;
     Ok(())
 }
 
@@ -224,6 +277,12 @@ fn clear_terminal_lines(stdout: &mut io::Stdout, rendered_count: usize) -> anyho
         execute!(*stdout, cursor::MoveUp((rendered_count) as u16))?;
         execute!(*stdout, terminal::Clear(ClearType::FromCursorDown))?;
     }
+    Ok(())
+}
+
+fn terminal_print(stdout: &mut io::Stdout, print: style::Print<String>) -> anyhow::Result<()> {
+    execute!(stdout, print)?;
+
     Ok(())
 }
 
